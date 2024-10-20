@@ -1,0 +1,18 @@
+{{define "content"}}
+<div id="upload-container">
+    <form id="upload_form">
+        <input type="text" name="title" value="Page Title">
+        <input type="file" name="image" accept="image/*">
+        <button type="button"
+                hx-post="/upload-page"
+                hx-include="#upload_form"
+                hx-encoding="multipart/form-data"
+                hx-target="#upload-status"
+                hx-swap="innerHTML"
+                >
+            Upload
+        </button>
+    </form>
+    <div id="upload-status"></div>
+</div>
+{{end}}

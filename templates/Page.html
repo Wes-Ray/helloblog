@@ -1,0 +1,17 @@
+{{define "content"}}
+
+    <p>Posted: {{ .Data.PostTime }}</p>
+    <img src="data:image/png;base64,{{ .Data.Image }}" alt="Image">
+
+    {{ if .Admin }}
+    <button type="button"
+            hx-post="/delete"
+            hx-vals='{ "title": "{{ .Title }}" }'
+            hx-swap="none"
+            >
+        Delete Page
+    </button>
+    {{else}}
+    {{end}}
+    
+{{end}}

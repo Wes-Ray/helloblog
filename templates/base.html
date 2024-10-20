@@ -1,0 +1,53 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>{{.Title}}</title>
+        <link rel="icon" href="/images/favicon.ico" type="image/x-icon">
+        <!-- water.css, switch to skeleton.css if more specificity is needed -->
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/dark.css">
+        <script src="/dep/htmx.min.js"></script>
+    </head>
+
+    <body>
+
+        <header>
+            <!-- RIBBON -->
+            <h1>{{ .Title }}</h1>
+            <nav>
+                <!-- TODO: add filter for if user is uploader/admin to show additional pages -->
+                <!-- TODO: replace with clean navigation bars -->
+                <b><a href="index">Index</a></b>
+                <b><a href="test">Test</a></b>
+                <b><a href="upload">Upload</a></b>
+                <!-- <b><a href="login-page">Login</a></b> -->
+                <b><a href="sign-up">Sign Up</a></b>
+                <b><a href="user-management">User Management</a></b>
+
+                <!-- LOG IN -->
+                <!-- <b>Login: {{ .Username }}</b> -->
+                 {{if .Username}}
+                    <button hx-post="/request-logout" hx-target="body" title="Click to Logout">{{.Username}}</button>
+                 {{else}}
+                    <!-- <b><a href="login-page">Login</a></b> -->
+                     <form hx-post="/request-login">
+                        <label for="username">Username</label>
+                        <input type="text" id="username" name="username" required>
+                        <label for="password">Password</label>
+                        <input type="password" id="password" name="password" required>
+                        <button type="submit">Log In</button>
+                     </form>
+                 {{end}}
+                <!-- END LOG IN -->
+            </nav>
+            <hr>
+        </header>
+
+        <main>
+            <!-- INSERT CONTENT -->
+            {{ template "content" . }}
+        </main>
+
+    </body>
+</html>

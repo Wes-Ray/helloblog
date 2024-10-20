@@ -1,0 +1,10 @@
+{{define "content"}}
+    <!-- TODO: add a preview image -->
+    <ul>
+        {{ range .Data }}
+            <h2><a href="{{ .Title }}">{{ .Title }}</a></h2>
+            <p>{{ .PostTime }}</p>
+            <br>
+        {{ end }}
+    </ul>
+{{end}}

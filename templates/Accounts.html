@@ -1,0 +1,53 @@
+{{define "content"}}
+<table id="user-table" border="1">
+    <thead>
+        <tr>
+            <th>Username</th>
+            <th>Email</th>
+            <th>Admin</th>
+            <th>Uploader</th>
+            <th>Created At</th>
+            <th>Last Login</th>
+            <th>Delete</th>
+        </tr>
+    </thead>
+    <tbody>
+        {{ range .Data }}
+            <tr>
+                <td>{{ .Username }}</td>
+                <td>{{ .Email }}</td>
+                <td>
+                    <input type="checkbox" 
+                           {{ if .Admin }}checked{{ end }}
+                           hx-post="/toggle-admin"
+                           hx-trigger="click"
+                           hx-swap="none"
+                           hx-vals='{"username": "{{ .Username }}"}'
+                    >
+                </td>
+                <td>
+                    <input type="checkbox" 
+                           {{ if .Uploader }}checked{{ end }}
+                           hx-post="/toggle-uploader"
+                           hx-trigger="click"
+                           hx-swap="none"
+                           hx-vals='{"username": "{{ .Username }}"}'
+                    >
+                </td>
+                <td>{{ .Created.Format "2006-01-02 15:04:05" }}</td>
+                <td>{{ if .LastLogin }}{{ .LastLogin.Format "2006-01-02 15:04:05" }}{{ else }}Never{{ end }}</td>
+                <td data-label="Action">
+                    <button class="delete-btn"
+                        hx-post="/delete-user"
+                        hx-confirm="Are you sure you want to delete user: {{ .Username }}?"
+                        hx-target="#user-table"
+                        hx-swap="none"
+                        hx-vals='{"username": "{{ .Username }}"}'>
+                    Delete
+                </button>
+                </td>
+            </tr>
+        {{ end }}
+    </tbody>
+</table>
+{{end}}
