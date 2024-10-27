@@ -9,10 +9,21 @@
                 hx-encoding="multipart/form-data"
                 hx-target="#upload-status"
                 hx-swap="innerHTML"
+                onclick="document.getElementById('upload-status').innerHTML='Uploading...'"
                 >
             Upload
         </button>
     </form>
-    <div id="upload-status"></div>
+    <div id="upload-status">status</div>
 </div>
+
+<script>
+    document.addEventListener('htmx:responseError', function(event) {
+        if (event.detail.error && event.detail.error.includes('413')) {
+            document.getElementById('upload-status').innerHTML = "Error 413, file is too large.";
+        } else {
+        statusDiv.innerHTML = "Error: " + event.detail.error || event.detail.xhr.statusText || "Unknown error occurred";
+    }
+    });
+    </script>
 {{end}}

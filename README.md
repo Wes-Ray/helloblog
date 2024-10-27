@@ -60,6 +60,8 @@ Setup nginx to redirect port 8080 IPv4 to domain name
 server {
     listen 80;
     server_name yourdomain.com www.yourdomain.com;
+
+    client_max_body_size 100M;  # max upload size
     
     location / {
         proxy_pass http://localhost:LOCALPORT;

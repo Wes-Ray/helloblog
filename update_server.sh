@@ -7,6 +7,7 @@ set -e  # exit immediately if command exits with nonzero status
 SCP_ARG="blog"
 TARGET_DIR="/home/user/blog"
 BIN_NAME="helloblog"
+SERVICE_NAME="helloblog.service"
 
 
 # compile go binary (delete after transfer)
@@ -50,7 +51,7 @@ echo
 echo "Transfer Complete"
 echo
 
-ssh $SCP_ARG "sudo systemctl restart helloblog.service && \
-            sudo systemctl  is-active helloblog.service --quiet helloblog.service && \
-            echo 'Blog service restart successful!' || \
+ssh -tt $SCP_ARG "bash -c 'sudo systemctl restart $SERVICE_NAME && \
+            sudo systemctl is-active $SERVICE_NAME --quiet $SERVICE_NAME && \
+            echo \"Blog service restart successful!\"' || \
             echo '[!!WARNING!!]: Blog service restart failed'"

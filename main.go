@@ -2,9 +2,7 @@ package main
 
 // PRIMARY TODOs
 
-// TODO: make upload status/progress (upload seems to be broken on https with big files)
 // TODO: add login failure status (make it so you can still login, make popup on fail)
-// TODO: make it so admin user can't be deleted
 // TODO: add comments (logged in and anonymous)
 // TODO: tags and navigation
 // TODO: make page not found page for StatusNotFound
@@ -22,7 +20,7 @@ package main
 // TODO: set up backup schedule
 // TODO: auto login when creating account
 // TODO: add links page
-// TODO: client-side hashing of password
+// TODO: make it so admin user can't be deleted
 
 // Project Structure
 // blog: manage blog pages (upload page, view page, edit page, etc)
@@ -123,7 +121,6 @@ func main() {
 	mult := io.MultiWriter(os.Stdout, log_file)
 	log.SetOutput(mult)
 
-	// TODO: grab admin username/pass from secure store
 	init_run := initDatabaseIfNone()
 
 	// accessing database, serving it
@@ -147,16 +144,15 @@ func main() {
 		Path:     "/",
 		MaxAge:   86400 * 7, // 7 days
 		HttpOnly: true,
-		Secure:   false,  // Set to true if using HTTPS, false if not
+		Secure:   false, // Set to true if using HTTPS, false if not
 		SameSite: http.SameSiteStrictMode,
 	}
 	// TODO: update to domain name (as const)
-    // st.Options.Domain = "domain.com"
+	// st.Options.Domain = "domain.com"
 
 	if init_run {
 		users.InitAdmin(db)
 	}
-	
 
 	// server loop
 	log.Println("Starting web server")
@@ -166,8 +162,9 @@ func main() {
 	//
 	// Pages
 	//
-	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		blog.GetRequest(w, r, db, st)
+	// TODO: add root / request that forward to the most recent page
+	mux.HandleFunc("/page/", func(w http.ResponseWriter, r *http.Request) {
+		blog.PageRequest(w, r, db, st)
 	})
 	mux.HandleFunc("/index", func(w http.ResponseWriter, r *http.Request) {
 		blog.ListPages(w, r, db, st)
@@ -224,8 +221,8 @@ func main() {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	srv := &http.Server {
-		Addr: ":8080",
+	srv := &http.Server{
+		Addr:    ":8080",
 		Handler: mux,
 	}
 
@@ -241,7 +238,7 @@ func main() {
 	log.Println("Shutting down server...")
 
 	// timeout set here
-	ctx, cancel := context.WithTimeout(context.Background(), 2 * time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Second)
 	defer cancel()
 
 	if err := srv.Shutdown(ctx); err != nil {

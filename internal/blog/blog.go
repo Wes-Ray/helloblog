@@ -29,7 +29,7 @@ type BlogPage struct {
 }
 
 const (
-	MAX_UPLOAD_SIZE int64 = 100 << 20 // 100 mb max upload size
+	MAX_UPLOAD_SIZE int64 = 100 << 20 // 100 mb max upload size, ensure nginx server config is set to match/exceed
 )
 
 // Render everything but base page/splash, uses template name for page title
@@ -45,9 +45,9 @@ func RenderTemplate(w http.ResponseWriter, r *http.Request, template_name string
 	username, _ := users.GetCurrentUsername(r, st)
 
 	content := map[string]interface{}{
-		"Title": template_name,
+		"Title":    template_name,
 		"Username": username,
-		"Data":  data,
+		"Data":     data,
 	}
 
 	err = tmpl.ExecuteTemplate(w, "base.html", content)
@@ -60,11 +60,13 @@ func RenderTemplate(w http.ResponseWriter, r *http.Request, template_name string
 func RenderSplash(w http.ResponseWriter, r *http.Request) {
 	templ_path := filepath.Join("templates", "Splash.html")
 	tmpl, err := template.ParseFiles(templ_path)
-	if err != nil {		log.Printf("error parsing template for splash page: %v", err)
+	if err != nil {
+		log.Printf("error parsing template for splash page: %v", err)
 		return
 	}
 
-	err = tmpl.Execute(w, nil); if err != nil {
+	err = tmpl.Execute(w, nil)
+	if err != nil {
 		log.Printf("error rendering template for splash page: %v", err)
 		return
 	}
@@ -106,7 +108,7 @@ func UploadPage(w http.ResponseWriter, r *http.Request, st *sessions.CookieStore
 	// TODO: redirect to custom 404 page
 	if !users.IsUploader(r, st) {
 		log.Printf("non uploader attempted to access accounts page handler from: %v", r.Host)
-		RenderTemplate(w, r, "NotFound", nil, st)	
+		RenderTemplate(w, r, "NotFound", nil, st)
 		return
 	}
 	RenderTemplate(w, r, "Upload", nil, st)
@@ -138,70 +140,53 @@ func addPageToDB(db *sql.DB, title string, content string, post_time time.Time, 
 }
 
 func UploadHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, st *sessions.CookieStore) {
-	// TODO: redirect to custom 404 page
 	if !users.IsUploader(r, st) {
-		log.Printf("only uploaders can access this")
-		RenderTemplate(w, r, "NotFound", nil, st)
+		w.Write([]byte("Unauthorized access"))
 		return
 	}
 
-	err := r.ParseMultipartForm(MAX_UPLOAD_SIZE) // 100 mb max upload size
+	err := r.ParseMultipartForm(MAX_UPLOAD_SIZE)
 	if err != nil {
-		log.Printf("Error parsing form: %v", err)
-		http.Error(w, "Invalid request", http.StatusBadRequest)
+		w.Write([]byte("Invalid request - file may be too large"))
 		return
-	}
-
-	log.Printf("Listing params (%d)", len(r.Form))
-	for key, values := range r.Form {
-		for _, value := range values {
-			log.Printf("Received param: %s = %s", key, value)
-		}
 	}
 
 	title := r.FormValue("title")
 	if title == "" {
-		log.Println("Client req'd upload of empty title")
-		w.Write([]byte(`<div id="upload-status">Title is required</div>`))
+		w.Write([]byte("Title is required"))
 		return
 	}
 
-	// TODO: add these as options
 	content := "new test content"
 	time := time.Now()
 
-	// image_path := "images/unavailable.png"
-	// bp, _ := getPageFromDB("asdf", db)
 	file, header, err := r.FormFile("image")
 	if err != nil {
-		log.Printf("Error retrieving file on upload attempt: %v", err)
-		w.Write([]byte(`<div id="upload-status">Error uploading file</div>`))
+		w.Write([]byte("Please select an image"))
 		return
 	}
 	defer file.Close()
+
 	file_bytes, err := io.ReadAll(file)
 	if err != nil {
-		log.Printf("Error reading file: %v", err)
-		w.Write([]byte(`<div id="upload-status">Error reading file</div>`))
+		w.Write([]byte("Error reading file"))
 		return
 	}
 
 	_ = header
 	file64 := base64.StdEncoding.EncodeToString(file_bytes)
-	// file64 = fmt.Sprintf("data:%s;base64,%s", header.Header.Get("Content-Type"), file64)
 
 	err, exists := addPageToDB(db, title, content, time, file64)
 	if err != nil {
-		log.Printf("Error adding %s to db: %v", title, err)
 		if exists {
-			w.Write([]byte(`<div id="upload-status">Title already in use.</div>`))
+			w.Write([]byte("Title already in use"))
 		} else {
-			w.Write([]byte(`<div id="upload-status">Error uploading file to database</div>`))
+			w.Write([]byte("Error uploading to database"))
 		}
 		return
 	}
-	// TODO: redirect uploader to uploaded page
-	log.Printf("Successfully added %s to database", title)
+
+	w.Write([]byte("Upload successful!"))
 }
 
 func AccountsPageHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, st *sessions.CookieStore) {
@@ -224,7 +209,7 @@ func DeletePageHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, st *s
 	if !users.IsAdmin(r, st) {
 		log.Printf("non admin attempted to use delete handler: %v", r.Host)
 		return
-	}	
+	}
 
 	err := r.ParseForm()
 	if err != nil {
@@ -285,14 +270,14 @@ func getPageFromDB(title string, db *sql.DB) (*BlogPage, error) {
 	return &p, err
 }
 
-func GetRequest(w http.ResponseWriter, r *http.Request, db *sql.DB, st *sessions.CookieStore) {
+func PageRequest(w http.ResponseWriter, r *http.Request, db *sql.DB, st *sessions.CookieStore) {
 	if !users.IsAuthed(r, st) {
-		log.Println("accessing GetRequest without auth")
+		log.Println("accessing PageRequest without auth")
 		RenderSplash(w, r)
 		return
 	}
 
-	title := r.URL.Path[len("/"):]
+	title := r.URL.Path[len("/page/"):]
 	if title == "" {
 		log.Println("Requesting root")
 		// TODO: redirect to home/most recent page or something
@@ -327,11 +312,11 @@ func GetRequest(w http.ResponseWriter, r *http.Request, db *sql.DB, st *sessions
 	}
 
 	content := map[string]interface{}{
-		"Title": p.Title,
+		"Title":    p.Title,
 		"Username": username,
-		"Admin": admin,
+		"Admin":    admin,
 		"Uploader": uploader,
-		"Data":  p,
+		"Data":     p,
 	}
 
 	err = tmpl.ExecuteTemplate(w, "base.html", content)
