@@ -1,10 +1,64 @@
 {{define "content"}}
-    <!-- TODO: add a preview image -->
     <ul>
-        {{ range .Data }}
+        {{ range .Data.Pages }}
             <h2><a href="/page/{{ .Title }}">{{ .Title }}</a></h2>
             <p>{{ .PostTime }}</p>
             <br>
         {{ end }}
     </ul>
+
+    <div id="tags-container">
+        {{ range .Data.Tags }}
+            <h4>
+                <a  href="#" 
+                    hx-push-url="true"
+                    class="tag {{ if .Selected }}selected{{ end }}"
+                    onclick="modifyPathList('{{ .Name }}', !this.classList.contains('selected')); return false;"
+                    hx-target="#content">
+                    {{ .Name }}
+                </a>
+            </h4>
+        {{ end }}
+    </div>
+
+    <script>
+        function modifyPathList(value, shouldAdd) {
+            let path = window.location.pathname;
+            
+            if (!path.includes('tags=')) {
+                path = '/index/tags=';
+            }
+            
+            let [basePath, listPart] = path.split('tags=');
+            
+            let items = listPart ? listPart.split(',') : [];
+            
+            if (shouldAdd) {
+                if (!items.includes(value)) {
+                    items.push(value);
+                }
+            } else {
+                items = items.filter(item => item !== value);
+            }
+            
+            let newPath = items.length > 0 
+                ? `${basePath}tags=${items.join(',')}`
+                : '/index';
+                
+            window.history.pushState({}, '', newPath);
+            
+            // Trigger HTMX request after updating the path
+            htmx.ajax('GET', newPath, '#content');
+            
+            return newPath;
+        }
+    </script>
+
+    <style>
+        .selected {
+            font-style: italic;
+            font-weight: bold;
+            /* Add any other styles for selected tags */
+        }
+    </style>
 {{end}}

@@ -3,6 +3,7 @@
     <form id="upload_form">
         <input type="text" name="title" value="Page Title">
         <input type="file" name="image" accept="image/*">
+        <input type="text" name="tags" value="Tags (comma separated)">
         <button type="button"
                 hx-post="/upload-page"
                 hx-include="#upload_form"

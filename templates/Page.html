@@ -1,7 +1,12 @@
 {{define "content"}}
 
     <p>Posted: {{ .Data.PostTime }}</p>
+
     <img src="data:image/png;base64,{{ .Data.Image }}" alt="Image">
+
+    {{ range .Data.Tags }}
+        <h3><a href="/index/tags={{ .Name }}">{{ .Name }}</h3>
+    {{ end }}
 
     {{ if .Admin }}
     <button type="button"

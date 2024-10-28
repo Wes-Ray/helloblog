@@ -2,7 +2,7 @@ package main
 
 // PRIMARY TODOs
 
-// TODO: add login failure status (make it so you can still login, make popup on fail)
+// TODO: tags with spaces are separated into new tags
 // TODO: add comments (logged in and anonymous)
 // TODO: tags and navigation
 // TODO: make page not found page for StatusNotFound
@@ -10,6 +10,7 @@ package main
 // TODO: make blog.go into pages.go - consider moving DB stuff to database module (and session module)
 // TODO: review all isAdmin and IsUploader checks to make sure they print who is attempting to access
 //		 and redirect to custom 404 page instead of forbidden
+// TODO: add thumbnail image to upload (default)
 // TODO: add check that name is not in page name/htmx indexes/maybe prepend all pages with /p or something
 // TODO: make sure all session conversions check for nil before converting to bool, etc
 // TODO: add modify item/page
@@ -49,7 +50,7 @@ import (
 
 const (
 	DatabasePath = "database_blog.db"
-	PagesPath    = "pages"
+	PagesPath    = "pages" // TODO: remove?
 	ImagePath    = "images"
 )
 
@@ -71,10 +72,15 @@ func initDatabaseIfNone() bool {
 		log.Fatal(err)
 	}
 
+	_, err = db.Exec("PRAGMA foreign_keys = ON;")
+    if err != nil {
+        log.Fatalf("Failed to enable foreign keys: %v", err)
+    }
+
 	// initializing blog table
 	page_query :=
 		`
-		CREATE TABLE IF NOT EXISTS blog (
+		CREATE TABLE IF NOT EXISTS pages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
         content TEXT NOT NULL,
@@ -84,7 +90,41 @@ func initDatabaseIfNone() bool {
 
 	_, err = db.Exec(page_query)
 	if err != nil {
-		log.Fatalf("Failed to add table to DB: %v", err)
+		log.Fatalf("Failed to add page table to DB: %v", err)
+	}
+
+	// init tag table
+	tag_query :=
+		`
+		CREATE TABLE IF NOT EXISTS tags (
+		id INTEGER PRIMARY KEY,
+		name TEXT UNIQUE NOT NULL
+		);
+		`
+
+	_, err = db.Exec(tag_query)
+	if err != nil {
+		log.Fatalf("Failed to add tag table to DB: %v", err)
+	}
+
+	// junction tag table
+	page_tags_query :=
+		`
+		CREATE TABLE IF NOT EXISTS page_tags (
+		page_id INTEGER NOT NULL,
+		tag_id INTEGER NOT NULL,
+		FOREIGN KEY (page_id) REFERENCES pages(id) 
+			ON DELETE CASCADE 
+			ON UPDATE CASCADE,
+		FOREIGN KEY (tag_id) REFERENCES tags(id) 
+			ON DELETE CASCADE 
+			ON UPDATE CASCADE,
+		PRIMARY KEY (page_id, tag_id)
+		);
+		`
+	_, err = db.Exec(page_tags_query)
+	if err != nil {
+		log.Fatalf("Failed to add page tags table to DB: %v", err)
 	}
 
 	// initializing user/pass table, match User struct in users
@@ -103,7 +143,7 @@ func initDatabaseIfNone() bool {
 
 	_, err = db.Exec(user_query)
 	if err != nil {
-		log.Fatalf("Failed to add table to DB: %v", err)
+		log.Fatalf("Failed to add users table to DB: %v", err)
 	}
 
 	log.Printf("New database successfully created at (%s)", DatabasePath)
@@ -163,11 +203,14 @@ func main() {
 	// Pages
 	//
 	// TODO: add root / request that forward to the most recent page
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		blog.RootRequest(w, r, db, st)
+	})
 	mux.HandleFunc("/page/", func(w http.ResponseWriter, r *http.Request) {
 		blog.PageRequest(w, r, db, st)
 	})
 	mux.HandleFunc("/index", func(w http.ResponseWriter, r *http.Request) {
-		blog.ListPages(w, r, db, st)
+		blog.IndexPage(w, r, db, st)
 	})
 	mux.HandleFunc("/upload", func(w http.ResponseWriter, r *http.Request) {
 		blog.UploadPage(w, r, st)

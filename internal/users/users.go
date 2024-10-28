@@ -305,8 +305,6 @@ func RequestLogin(w http.ResponseWriter, r *http.Request, db *sql.DB, st *sessio
         http.Error(w, "Invalid request: All fields are required", http.StatusBadRequest)
         return
     }
-	
-	log.Printf("ACCOUNT LOGIN ATTEMPT: %v - %v", username, password)
 
 	err = checkLogin(db, username, password); if err != nil {
 		log.Printf("Failed login: %v", err)

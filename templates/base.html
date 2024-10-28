@@ -30,14 +30,16 @@
                  {{if .Username}}
                     <button hx-post="/request-logout" hx-target="body" title="Click to Logout">{{.Username}}</button>
                  {{else}}
-                    <!-- <b><a href="login-page">Login</a></b> -->
-                     <form hx-post="/request-login">
-                        <label for="username">Username</label>
-                        <input type="text" id="username" name="username" required>
-                        <label for="password">Password</label>
-                        <input type="password" id="password" name="password" required>
-                        <button type="submit">Log In</button>
-                     </form>
+                    <div id="login-form">
+                        <form hx-post="/request-login" hx-target="#login-message">
+                            <label for="username">Username</label>
+                            <input type="text" id="username" name="username" required>
+                            <label for="password">Password</label>
+                            <input type="password" id="password" name="password" required>
+                            <button type="submit">Log In</button>
+                        </form>
+                        <div id="login-message"></div>
+                    </div>
                  {{end}}
                 <!-- END LOG IN -->
             </nav>
