@@ -283,9 +283,7 @@ func UploadHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, st *sessi
 
 	tags_string := r.FormValue("tags")
 	// parse tags string into tags list 
-	log.Printf("tags string: %v", tags_string)
 	tags := strings.Fields(strings.ReplaceAll(tags_string, ",", " "))
-	log.Printf("tags: %v", tags)
 
 	content := "new test content"
 	time := time.Now()
@@ -337,101 +335,95 @@ func AccountsPageHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, st 
 }
 
 func DeletePageHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, st *sessions.CookieStore) {
-	if !users.IsAdmin(r, st) {
-		log.Printf("non admin attempted to use delete handler: %v", r.Host)
-		return
-	}
+    if !users.IsAdmin(r, st) {
+        log.Printf("non admin attempted to use delete handler: %v", r.Host)
+        return
+    }
 
-	err := r.ParseForm()
-	if err != nil {
-		log.Printf("Error parsing form: %v", err)
-		http.Error(w, "Invalid request", http.StatusBadRequest)
-		return
-	}
+    err := r.ParseForm()
+    if err != nil {
+        log.Printf("Error parsing form: %v", err)
+        http.Error(w, "Invalid request", http.StatusBadRequest)
+        return
+    }
 
-	title := r.Form.Get("title")
-	if title == "" {
-		log.Printf("couldn't get title when deleting")
-		http.Error(w, "Invalid request", http.StatusBadRequest)
-		return
-	}
+    title := r.Form.Get("title")
+    if title == "" {
+        log.Printf("couldn't get title when deleting")
+        http.Error(w, "Invalid request", http.StatusBadRequest)
+        return
+    }
 
-	tx, err := db.Begin()
-	if err != nil {
-		log.Printf("error starting transaction: %v", err)
-		http.Error(w, "Internal server error", http.StatusInternalServerError)
-		return
-	}
-	defer tx.Rollback()
-	
-	stmt, err := tx.Prepare("DELETE FROM pages WHERE title = ?")
-	if err != nil {
-		log.Printf("error preparing delete statement: %v", err)
-		return
-	}
-	defer stmt.Close()
+    tx, err := db.Begin()
+    if err != nil {
+        log.Printf("error starting transaction: %v", err)
+        http.Error(w, "Internal server error", http.StatusInternalServerError)
+        return
+    }
+    defer tx.Rollback()
+    
+    // First get the page ID
+    var pageID int64
+    err = tx.QueryRow("SELECT id FROM pages WHERE title = ?", title).Scan(&pageID)
+    if err != nil {
+        log.Printf("error getting page ID: %v", err)
+        return
+    }
 
-	result, err := stmt.Exec(title)
-	if err != nil {
-		log.Printf("failed to execute delete for %v: %v", title, err)
-		http.Error(w, "Invalid request", http.StatusBadRequest)
-		return
-	}
+    _, err = tx.Exec("DELETE FROM page_tags WHERE page_id = ?", pageID)
+    if err != nil {
+        log.Printf("error deleting page_tags: %v", err)
+        return
+    }
 
-	// Check if a row was affected
-	rowsAffected, err := result.RowsAffected()
-	if err != nil {
-		log.Printf("failed to retrieve affected rows: %v", err)
-		http.Error(w, "Invalid request", http.StatusBadRequest)
-		return
-	}
-	if rowsAffected == 0 {
-		log.Printf("no row found with the title: %s", title)
-		http.Error(w, "Invalid request", http.StatusBadRequest)
-		return
-	}
+    stmt, err := tx.Prepare("DELETE FROM pages WHERE title = ?")
+    if err != nil {
+        log.Printf("error preparing delete statement: %v", err)
+        return
+    }
+    defer stmt.Close()
 
-	// Clean up tags
-	_, err = tx.Exec(`
-		DELETE FROM tags 
-		WHERE NOT EXISTS (
-			SELECT 1 
-			FROM page_tags 
-			WHERE page_tags.tag_id = tags.id
-		)
-	`)
-	if err != nil {
-		log.Printf("error cleaning up tags: %v", err)
-		return
-	}
+    result, err := stmt.Exec(title)
+    if err != nil {
+        log.Printf("failed to execute delete for %v: %v", title, err)
+        http.Error(w, "Invalid request", http.StatusBadRequest)
+        return
+    }
 
-	err = tx.Commit()
-	if err != nil {
-		log.Printf("error committing transaction: %v", err)
-		return
-	}
+    // Check if a row was affected
+    rowsAffected, err := result.RowsAffected()
+    if err != nil {
+        log.Printf("failed to retrieve affected rows: %v", err)
+        http.Error(w, "Invalid request", http.StatusBadRequest)
+        return
+    }
+    if rowsAffected == 0 {
+        log.Printf("no row found with the title: %s", title)
+        http.Error(w, "Invalid request", http.StatusBadRequest)
+        return
+    }
 
-	// For debugging, let's add more detailed logging:
-	var tagNames []string
-	rows, err := db.Query("SELECT name FROM tags")
-	if err == nil {
-		defer rows.Close()
-		for rows.Next() {
-			var name string
-			if err := rows.Scan(&name); err == nil {
-				tagNames = append(tagNames, name)
-			}
-		}
-		log.Printf("Remaining tags: %v", tagNames)
-	}
+    // Clean up unused tags
+    _, err = tx.Exec(`
+        DELETE FROM tags 
+        WHERE NOT EXISTS (
+            SELECT 1 
+            FROM page_tags 
+            WHERE page_tags.tag_id = tags.id
+        )
+    `)
+    if err != nil {
+        log.Printf("error cleaning up tags: %v", err)
+        return
+    }
 
-	var tagCount, pageTagCount, pageCount int
-	_ = db.QueryRow("SELECT COUNT(*) FROM tags").Scan(&tagCount)
-	_ = db.QueryRow("SELECT COUNT(*) FROM page_tags").Scan(&pageTagCount)
-	_ = db.QueryRow("SELECT COUNT(*) FROM pages").Scan(&pageCount)
-	log.Printf("Tags: %d, Page_tags: %d PageCount: %v", tagCount, pageTagCount, pageCount)
+    err = tx.Commit()
+    if err != nil {
+        log.Printf("error committing transaction: %v", err)
+        return
+    }
 
-	w.Header().Set("HX-Redirect", "/index")
+    w.Header().Set("HX-Redirect", "/index")
 }
 
 func GetPostTags(ID int64, db *sql.DB) ([]Tag, error) {
