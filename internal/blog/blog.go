@@ -7,6 +7,7 @@ import (
 	"io"
 	"slices"
 	"strings"
+	"strconv"
 
 	// golang
 	"database/sql"
@@ -30,6 +31,15 @@ type BlogPage struct {
 	PostTime time.Time
 	Image    string // TODO: consider changing this back to a blob/save in a subfolder to serve
 	Tags     []Tag
+	Comments []Comment
+}
+
+type Comment struct {
+    ID        int64
+    PageID    int64
+    Username  sql.NullString
+    Content   string
+    PostTime  time.Time
 }
 
 type Tag struct {
@@ -469,7 +479,114 @@ func getPageFromDB(title string, db *sql.DB) (*BlogPage, error) {
 		return nil, fmt.Errorf("error getting tags for '%v': %v", title, err)
 	}
 
+	comments, err := getCommentsForPage(db, p.ID)
+    if err != nil {
+        return nil, fmt.Errorf("error getting comments for '%v': %v", title, err)
+    }
+    p.Comments = comments
+
 	return &p, nil
+}
+
+//
+// Comments
+//
+
+func addComment(db *sql.DB, pageID int64, username string, content string) error {
+    query := `
+        INSERT INTO comments (page_id, username, content)
+        VALUES (?, ?, ?)`
+    
+    var usernameArg interface{}
+    if username == "" {
+        usernameArg = nil
+    } else {
+        usernameArg = username
+    }
+    
+    _, err := db.Exec(query, pageID, usernameArg, content)
+    return err
+}
+
+func AddCommentHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, st *sessions.CookieStore) {
+    err := r.ParseForm()
+    if err != nil {
+        log.Printf("Error parsing form: %v", err)
+        http.Error(w, "Invalid request", http.StatusBadRequest)
+        return
+    }
+    
+    pageID := r.Form.Get("page_id")
+    content := r.Form.Get("content")
+    
+    if pageID == "" || content == "" {
+        http.Error(w, "Missing required fields", http.StatusBadRequest)
+        return
+    }
+    
+    pageIDInt, err := strconv.ParseInt(pageID, 10, 64)
+    if err != nil {
+        http.Error(w, "Invalid page ID", http.StatusBadRequest)
+        return
+    }
+    
+    username, _ := users.GetCurrentUsername(r, st)
+    
+    err = addComment(db, pageIDInt, username, content)
+    if err != nil {
+        log.Printf("Error adding comment: %v", err)
+        http.Error(w, "Failed to add comment", http.StatusInternalServerError)
+        return
+    }
+    
+    // Refresh the comments section
+    comments, err := getCommentsForPage(db, pageIDInt)
+    if err != nil {
+        log.Printf("Error getting comments: %v", err)
+        http.Error(w, "Failed to refresh comments", http.StatusInternalServerError)
+        return
+    }
+    
+    tmpl, err := template.ParseFiles("templates/Comments.html")
+    if err != nil {
+        log.Printf("Error parsing template: %v", err)
+        http.Error(w, "Template error", http.StatusInternalServerError)
+        return
+    }
+    
+    err = tmpl.Execute(w, comments)
+    if err != nil {
+        log.Printf("Error executing template: %v", err)
+        http.Error(w, "Template error", http.StatusInternalServerError)
+        return
+    }
+}
+
+
+
+func getCommentsForPage(db *sql.DB, pageID int64) ([]Comment, error) {
+    query := `
+        SELECT id, page_id, username, content, post_time
+        FROM comments
+        WHERE page_id = ?
+        ORDER BY post_time DESC`
+        
+    rows, err := db.Query(query, pageID)
+    if err != nil {
+        return nil, err
+    }
+    defer rows.Close()
+    
+    var comments []Comment
+    for rows.Next() {
+        var c Comment
+        err := rows.Scan(&c.ID, &c.PageID, &c.Username, &c.Content, &c.PostTime)
+        if err != nil {
+            return nil, err
+        }
+        comments = append(comments, c)
+    }
+    return comments, nil
 }
 
 func RootRequest(w http.ResponseWriter, r *http.Request, db *sql.DB, st *sessions.CookieStore) {
@@ -507,7 +624,7 @@ func PageRequest(w http.ResponseWriter, r *http.Request, db *sql.DB, st *session
 
 	// Rendering page with template (different case than RenderTemplate)
 
-	tmpl, err := template.ParseFiles("templates/base.html", "templates/Page.html")
+	tmpl, err := template.ParseFiles("templates/base.html", "templates/Page.html", "templates/Comments.html")
 	if err != nil {
 		log.Printf("error parsing templates for blog page: %v", err)
 		return

@@ -2,26 +2,27 @@ package main
 
 // PRIMARY TODOs
 
-// TODO: tags with spaces are separated into new tags
-// TODO: add comments (logged in and anonymous)
-// TODO: tags and navigation
+// TODO: navigation between pages with arrows
 // TODO: make page not found page for StatusNotFound
-// TODO: set up like/heart button
-// TODO: make blog.go into pages.go - consider moving DB stuff to database module (and session module)
-// TODO: review all isAdmin and IsUploader checks to make sure they print who is attempting to access
-//		 and redirect to custom 404 page instead of forbidden
 // TODO: add thumbnail image to upload (default)
-// TODO: add check that name is not in page name/htmx indexes/maybe prepend all pages with /p or something
 // TODO: make sure all session conversions check for nil before converting to bool, etc
 // TODO: add modify item/page
 // TODO: add author to page
 // TODO: add option to make page unlisted from index page (direct link only)
 // TODO: set up firewall
 // TODO: set up domain name in session store (see startup TODO)
-// TODO: set up backup schedule
 // TODO: auto login when creating account
+
+
+// SECONDARY TODOs
+// TODO: set up like/heart button
+// TODO: make blog.go into pages.go - consider moving DB stuff to database module (and session module)
+// TODO: review all isAdmin and IsUploader checks to make sure they print who is attempting to access
+//		 and redirect to custom 404 page instead of forbidden
+// TODO: set up backup schedule
 // TODO: add links page
 // TODO: make it so admin user can't be deleted
+
 
 // Project Structure
 // blog: manage blog pages (upload page, view page, edit page, etc)
@@ -125,6 +126,26 @@ func initDatabaseIfNone() bool {
 	_, err = db.Exec(page_tags_query)
 	if err != nil {
 		log.Fatalf("Failed to add page tags table to DB: %v", err)
+	}
+
+	// initializing comments table, must match Comment struct in blog.go
+	comments_query := `
+    CREATE TABLE IF NOT EXISTS comments (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        page_id INTEGER NOT NULL,
+        username TEXT,  -- NULL for anonymous comments
+        content TEXT NOT NULL,
+        post_time TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (page_id) REFERENCES pages(id) 
+            ON DELETE CASCADE 
+            ON UPDATE CASCADE,
+        FOREIGN KEY (username) REFERENCES users(username) 
+            ON DELETE SET NULL 
+            ON UPDATE CASCADE
+    );`
+	_, err = db.Exec(comments_query)
+	if err != nil {
+    	log.Fatalf("Failed to add comments table to DB: %v", err)
 	}
 
 	// initializing user/pass table, match User struct in users
@@ -254,6 +275,9 @@ func main() {
 	})
 	mux.HandleFunc("/toggle-uploader", func(w http.ResponseWriter, r *http.Request) {
 		users.ToggleUploader(w, r, db, st)
+	})
+	mux.HandleFunc("/add-comment", func(w http.ResponseWriter, r *http.Request) {
+		blog.AddCommentHandler(w, r, db, st)
 	})
 
 	// serve static files (deps/images)
