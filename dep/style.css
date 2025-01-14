@@ -1,0 +1,214 @@
+
+
+/* Base html */
+nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.nav-left {
+    margin-right: auto;
+}
+.nav-right {
+    margin-left: auto;
+    margin-top: -80px;
+}
+.logo-link img {
+        height: 100px;
+        transition: opacity 0.2s;
+}
+.logo-link:hover img {
+    opacity: 0.8;
+}
+
+.image-link img {
+    transition: opacity 0.2s;
+}
+.image-link:hover img {
+    opacity: 0.6;
+}
+
+/* Comments/Descriptions */
+
+.text-box {
+    background-color: #12191F; /* or any darker blue color you prefer */
+    padding: 10px;
+    border-radius: 6px; /* optional: for rounded corners */
+    white-space: pre-line; /* to preserve line breaks */
+}
+
+/* Page */
+
+.nav-container {
+    display: grid;  /* Changed to grid */
+    grid-template-columns: 2fr auto 2fr;  /* Three columns: left, center, right */
+    align-items: center;
+    width: 70%;
+    margin: 1em auto;
+    gap: 1em;  /* Added gap between elements */
+}
+
+.arrow-left {
+    justify-self: start;  /* Align to start of first column */
+}
+
+.arrow-right {
+    justify-self: end;    /* Align to end of last column */
+}
+
+.arrow-left img, .arrow-right img {
+    height: 100px;
+    transition: opacity 0.2s;
+}
+
+/* For screens smaller than 768px (typical tablet/mobile breakpoint) */
+@media screen and (max-width: 768px) {
+    .arrow-left img, .arrow-right img {
+        height: 60px; /* or whatever size works best for mobile */
+    }
+}
+
+/* For even smaller screens */
+@media screen and (max-width: 480px) {
+    .arrow-left img, .arrow-right img {
+        height: 60px; /* even smaller for very small screens */
+    }
+}
+
+.arrow-left:hover img, .arrow-right:hover img {
+    opacity: 0.8;
+}
+
+.tooltip-container {
+    position: relative;
+    display: inline-block;
+}
+
+.tooltip-container img {
+    max-width: 100%;
+}
+
+.tooltip-container::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    border-radius: 4px;
+    font-size: 14px;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+    z-index: 1000;
+}
+
+.tooltip-container:hover::after {
+    opacity: 1;
+    visibility: visible;
+}
+
+.tag-tooltip-container {
+    position: relative;
+    display: inline-block;
+}
+
+.tag-tooltip-container::after {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: -50px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 8px;
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    border-radius: 4px;
+    font-size: 14px;
+    white-space: nowrap;
+    opacity: 0;
+    visibility: hidden;
+    transition: opacity 0.2s, visibility 0.2s;
+    z-index: 1000;
+}
+
+.tag-tooltip-container:hover::after {
+    opacity: 1;
+    visibility: visible;
+}
+
+.nav-container .tag-link {
+    justify-self: center;  /* Center in middle column */
+    text-align: center;    /* Center the text */
+    text-decoration: none;
+    background-color: #2d333b;
+    padding: 0.25em 0.5em;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+    white-space: nowrap;
+    grid-column: 2;        /* Explicitly place in middle column */
+}
+
+.arrow-left, .arrow-right {
+    display: flex;
+    align-items: center;
+}
+
+/* Tags */
+
+.tags-container {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5em;
+    margin-bottom: 1em;
+}
+
+.tag-link {
+    text-decoration: none;
+    background-color: #2d333b;
+    padding: 0.25em 0.5em;
+    border-radius: 4px;
+    transition: background-color 0.2s;
+    display: inline-block;
+    font-size: 1rem;
+    font-weight: normal;
+    margin: 0.2em 0;
+}
+
+.tag-link:hover {
+    background-color: #444c56;
+}
+
+.tag-item {
+    margin: 0;
+    display: inline-block;
+    font-size: 1rem;
+    font-weight: normal;
+}
+
+/* Home Page */
+
+.thumbnail {
+    max-width: min(500px, 30vw);
+    height: auto;
+    margin-right: 20px;
+    margin-left: -10px;
+    display: block; /* Optional: removes bottom spacing */
+}
+
+.page-details {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: start;
+    margin-top: -10px;  /* This compensates for the default h2 margin */
+}
+
+.page-details h2 {
+    margin-top: 0;
+    margin-bottom: 5px;
+}
+
+

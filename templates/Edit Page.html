@@ -1,13 +1,19 @@
 {{define "content"}}
 
-<h1>Upload a Page</h1>
+<h1>Editing Page: <i>"{{ .Data.Page.Title }}"</i></h1>
 
 <div id="upload-container">
     <form id="upload_form">
-        <textarea type="text" name="title" placeholder="Page Title" rows="1" cols="80"></textarea>
+        <i><b>Title</Title></b></i>
+        <input type="hidden" name="original_title" value="{{ .Data.Page.Title }}">
+        <textarea type="text" name="title" rows="1" cols="80">{{ .Data.Page.Title }}</textarea>
+        <i><b>Image</Title></b></i>
         <input type="file" name="image" accept="image/*">
-        <textarea name="description" placeholder="Description" rows="4" cols="80"></textarea>
-        <textarea name="tags" placeholder="Tags (comma/space separated)" rows="1" cols="80"></textarea>
+        <i><b>Description</Title></b></i>
+        <textarea name="description" rows="4" cols="80">{{ .Data.Page.Content }}</textarea>
+        <i><b>Tags</Title></b></i>
+        <textarea name="tags" rows="1" cols="80">{{ .Data.TagString }}</textarea>
+        <i><b>Post Time</Title></b></i>
         <input type="datetime-local" name="post_time" id="post_time">
         <div class="checkbox-container">
             <input type="checkbox" name="unlisted" id="unlisted">
@@ -21,19 +27,18 @@
         <textarea type="text" name="url_link" placeholder="URL (link post required)" rows="1" cols="80"></textarea>
 
         <button type="button"
-                hx-post="/upload-page"
+                hx-post="/modify-page"
                 hx-include="#upload_form"
                 hx-encoding="multipart/form-data"
                 hx-target="#upload-status"
                 hx-swap="innerHTML"
                 onclick="document.getElementById('upload-status').innerHTML='Uploading...'"
                 >
-            Upload
+            Save
         </button>
     </form>
-    
     <h3><code><div id="upload-status">status</div></code></h3>
-
+    
 </div>
 
 <script>

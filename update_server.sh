@@ -5,7 +5,7 @@
 set -e  # exit immediately if command exits with nonzero status
 
 SCP_ARG="blog"
-TARGET_DIR="/home/user/blog"
+TARGET_DIR="/home/wes/blog"
 BIN_NAME="helloblog"
 SERVICE_NAME="helloblog.service"
 

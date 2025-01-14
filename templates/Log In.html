@@ -1,0 +1,26 @@
+{{define "content"}}
+
+    <h1>Log In</h1>
+
+    {{if .Username}}
+        <p>Current logged in as <b><i>"{{ .Username }}"</i></b></p>
+        <br>
+        <button hx-post="/request-logout" hx-target="body" title="Click to Logout">Logout</button>
+    {{ else }}
+
+        <div id="login-form">
+            <form hx-post="/request-login" hx-target="#login-message">
+                <label for="username">Username</label>
+                <input type="text" id="username" name="username" required>
+                <label for="password">Password</label>
+                <input type="password" id="password" name="password" required>
+                <button type="submit">Log In</button>
+            </form>
+            <div id="login-message"></div>
+        </div>
+    {{ end }}
+    <hr>
+
+    <p>Don't have an account? <a href="/sign-up">Sign up here!</a></p>
+{{end}}
+

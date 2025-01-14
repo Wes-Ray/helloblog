@@ -1,16 +1,71 @@
 {{define "content"}}
 
-    <p>Posted: {{ .Data.PostTime }}</p>
+    <h1> {{ .Title }} </h1>
 
-    <img src="data:image/png;base64,{{ .Data.Image }}" alt="Image">
-
-    {{template "Comments" .Data}}
-
-    {{ range .Data.Tags }}
-        <h3><a href="/index/tags={{ .Name }}">{{ .Name }}</h3>
+    <!-- Image -->
+    {{ if not .Data.LinkPost}}
+        <img src="data:image/png;base64,{{ .Data.Image }}" alt="Image">
+    {{ else }}
+        <a href="{{ .Data.UrlLink }}" class="image-link"><img src="data:image/png;base64,{{ .Data.Image }}" alt="Image"></a>
     {{ end }}
 
+    <!-- Nav Buttons -->
+    <div class="nav-container">
+        {{ if .PrevPage }}
+            <a class="arrow-left tooltip-container" href="/page/{{ .PrevPage }}{{if .FollowTag}}?tag={{ .FollowTag }}{{ end }}" data-tooltip="Previous: {{ .PrevPage }}">
+                <img src="/images/arrow2-left.png" alt="previous page">
+            </a>
+        {{ else }}
+            <span></span>
+        {{ end }}
+
+        {{ if .FollowTag }}
+            <a class="tag-link tag-tooltip-container" a href="/page/{{ .Title }}" data-tooltip="Remove Tag">{{ .FollowTag }}</a>
+        {{ else }}
+            <span></span>
+        {{ end }}
+
+        {{ if .NextPage}}
+            <a class="arrow-right tooltip-container" href="/page/{{ .NextPage }}{{if .FollowTag}}?tag={{ .FollowTag }}{{ end }}" data-tooltip="Next: {{ .NextPage }}">
+                <img src="/images/arrow2-right.png" alt="next page">
+            </a>
+        {{ else }}
+            <span></span>
+        {{ end }}
+
+    </div>
+
+    <p>Posted {{ .Data.PostTime.Format "2 Jan 2006" }} by <a href="/uploader/{{ .Data.Uploader }}">{{ .Data.Uploader }}</a></p>
+
+    <!-- Post Description -->
+    {{ if .Data.Content}}
+        <hr>
+        <p class="text-box">{{ .Data.Content }}</p>
+        <hr>
+    {{ end }}
+
+
+    {{template "Comments" .Data}}
+     
+    <h2>Tags</h2>
+    <div class="tags-container">
+        {{ range .Data.Tags }}
+            <h3 class="tag-item">
+                <a class="tag-link" href="/page/{{ $.Title }}?tag={{ .Name }}">{{ .Name }}</a>
+            </h3>
+        {{ end }}
+    </div>
+
+    <i>Click to follow a tag or series</i>
+
+    <!-- Uploader/Admin Stuff -->
+    {{ if .Uploader }}
+    <hr>
+    <h4><a href="/edit-page/{{ .Title }}">Edit Page</a></h4>
+    {{end}}
+
     {{ if .Admin }}
+    <hr>
     <button type="button"
             hx-post="/delete"
             hx-vals='{ "title": "{{ .Title }}" }'
@@ -20,5 +75,9 @@
     </button>
     {{else}}
     {{end}}
+
+    <div class="views-counter">
+        {{.Data.Views}} views
+    </div>
     
 {{end}}

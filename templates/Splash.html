@@ -3,31 +3,61 @@
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>{{.Title}}</title>
+
+        <title>OGsyn</title>
+
         <link rel="icon" href="/images/favicon.ico" type="image/x-icon">
         <!-- water.css, switch to skeleton.css if more specificity is needed -->
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/dark.css">
         <script src="/dep/htmx.min.js"></script>
+
+        <style>
+            .logo-splash {
+                height: 200px;
+                max-width: 100%;
+                display: block; 
+                margin: 0 auto;
+                object-fit: contain;
+            }
+            .content-splash {
+                text-align: center;
+                width: 100%;
+                margin: 0 auto;
+            }
+        </style>
     </head>
 
     <body>
         <!-- TODO: center splash -->
         <main>
-            <h1>Cookies?</h1>
-            <p>Do you consent to session data being stored on the cookie.<p>
-            
-            <button hx-post="/request-authenticate"
-                    hx-swap="none"
-                    title="Agree and enter site">
-                    Enter
-                </button>
-            <!-- TODO: back button doesn't work, just redirect to google if I can't get it to work -->
-            <button hx-trigger="click"
-                    hx-get="javascript:history.back()" 
-                    hx-swap="none"
-                    title="Exit">
-                    Exit
-            </button>
+
+            <img class="logo-splash" src="/images/title01.png" alt="home page">
+
+            <div class="content-splash">
+                <h3>A blog for games, gamedev, and other topics I find interesting.</h3>
+                <br>
+                <i>This site uses cookies to track session data.</i>
+                
+                <br>
+                <br>
+        
+                <!-- Enter Button -->
+                <button hx-post="/request-authenticate{{.Path}}"
+                        hx-swap="none"
+                        title="Agree and enter site">
+                        Enter
+                    </button>
+                <!-- Exit Button -->
+                 <a href="google.com">
+                    <button hx-trigger="click"
+                            hx-get="" 
+                            hx-swap="none"
+                            title="Exit">
+                            Exit
+                    </button>
+                 </a>
+
+            </div>
         </main>
     </body>
 </html>

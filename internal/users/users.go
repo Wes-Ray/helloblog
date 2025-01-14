@@ -18,12 +18,12 @@ import (
 
 // match users table in sql db
 type User struct {
-	Username 	string
-	Email 		string
-	Admin		bool
-	Uploader 	bool  
-	Created 	time.Time
-	LastLogin 	time.Time
+	Username 		string
+	Email 			string
+	Admin			bool
+	Uploader 		bool  
+	Created 		time.Time
+	LastLogin 		time.Time
 }
 
 func (u User) String() string {
@@ -56,19 +56,47 @@ func getUserFromDB(username string, db *sql.DB) (User, error) {
     return u, nil
 }
 
-func IsAdmin(r *http.Request, st *sessions.CookieStore) bool {
-	session, err := st.Get(r, "session"); if err != nil {
-		log.Printf("error getting session with isAdmin: %v", err)
-		return false
-	}
+func HasSubscriptionLevel(db *sql.DB, username string, level string) (bool, error) {
+    query := `
+        SELECT EXISTS (
+            SELECT 1 FROM users u
+            JOIN user_subscriptions us ON u.id = us.user_id
+            JOIN subscription_levels sl ON us.subscription_id = sl.id
+            WHERE u.username = ? AND sl.name = ?
+        )
+    `
+    var exists bool
+    err := db.QueryRow(query, username, level).Scan(&exists)
+    return exists, err
+}
 
-	auth, ok := session.Values[sesAUTHENTICATED].(bool); if !ok || !auth {
-		return false
-	}
-	adm, ok := session.Values[sesADMIN].(bool); if !ok {
-		return false
-	}
-	return adm
+func IsAdmin(r *http.Request, st *sessions.CookieStore) bool {
+    session, err := st.Get(r, "session")
+    if err != nil {
+        log.Printf("error getting session with isAdmin: %v", err)
+        return false
+    }
+
+    // Check if authenticated first
+    auth, ok := session.Values[sesAUTHENTICATED]
+    if !ok || auth == nil {
+        return false
+    }
+    authBool, ok := auth.(bool)
+    if !ok || !authBool {
+        return false
+    }
+
+    // Then check admin status
+    admin, ok := session.Values[sesADMIN]
+    if !ok || admin == nil {
+        return false
+    }
+    adminBool, ok := admin.(bool)
+    if !ok {
+        return false
+    }
+    return adminBool
 }
 
 func SetUserAdmin(db *sql.DB, username string, admin_status bool) error {
@@ -153,18 +181,32 @@ func InitAdmin(db *sql.DB) {
 }
 
 func IsUploader(r *http.Request, st *sessions.CookieStore) bool {
-	session, err := st.Get(r, "session"); if err != nil {
-		log.Printf("error getting session with IsUploader: %v", err)
-		return false
-	}
+    session, err := st.Get(r, "session")
+    if err != nil {
+        log.Printf("error getting session with IsUploader: %v", err)
+        return false
+    }
 
-	auth, ok := session.Values[sesAUTHENTICATED].(bool); if !ok || !auth {
-		return false
-	}
-	upl, ok := session.Values[sesUPLOADER].(bool); if !ok {
-		return false
-	}
-	return upl
+    // Check if authenticated first
+    auth, ok := session.Values[sesAUTHENTICATED]
+    if !ok || auth == nil {
+        return false
+    }
+    authBool, ok := auth.(bool)
+    if !ok || !authBool {
+        return false
+    }
+
+    // Then check uploader status
+    upl, ok := session.Values[sesUPLOADER]
+    if !ok || upl == nil {
+        return false
+    }
+    uplBool, ok := upl.(bool)
+    if !ok {
+        return false
+    }
+    return uplBool
 }
 
 
@@ -234,7 +276,7 @@ func NewUserPage(w http.ResponseWriter, r *http.Request, db *sql.DB) {
 	}
 
 	err = tmpl.Execute(w, nil); if err != nil {
-		log.Printf("error rendering index template: %v", err)
+		log.Printf("error rendering new user template: %v", err)
 		return
 	}
 }
@@ -252,7 +294,7 @@ func checkLogin(db *sql.DB, username string, pass string) error {
 	return err
 }
 
-func NewUserAccountRequestHandler(w http.ResponseWriter, r *http.Request, db *sql.DB) {
+func NewUserAccountRequestHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, st *sessions.CookieStore) {
 	err := r.ParseForm(); if err != nil {
 		log.Printf("Error parsing form: %v", err)
         http.Error(w, "Invalid request", http.StatusBadRequest)
@@ -261,12 +303,21 @@ func NewUserAccountRequestHandler(w http.ResponseWriter, r *http.Request, db *sq
     username := r.Form.Get("username")
     email := r.Form.Get("email")
     password := r.Form.Get("password")
+	password2 := r.Form.Get("password2")
 
-    if username == "" || password == "" {
+    if username == "" || password == "" || password2 == "" {
         log.Printf("Error: Missing required fields in user account request")
         http.Error(w, "Invalid request: All fields are required", http.StatusBadRequest)
         return
     }
+	if password != password2 {
+		w.Write([]byte(`
+		<div class="alert alert-success">
+			Passwords do not match.
+		</div>
+		`))
+		return
+	}
 	
 	// add account to DB
 	err = AddLoginToDB(db, username, password, email)
@@ -281,12 +332,31 @@ func NewUserAccountRequestHandler(w http.ResponseWriter, r *http.Request, db *sq
 		return
 	}
 
-	// when successful, send message back confirming account creation
+	// Create session for the new user
+	user, err := getUserFromDB(username, db)
+	if err != nil {
+		log.Printf("failed to access user to create session: %v", err)
+		return
+	}
+
+	session, err := st.Get(r, "session")
+	if err != nil {
+		log.Printf("failed to create session: %v", err)
+		return
+	}
+
+	session.Values[sesAUTHENTICATED] = true
+	session.Values[sesUPLOADER] = user.Uploader
+	session.Values[sesADMIN] = user.Admin
+	session.Values[sesUSERNAME] = username
+	session.Save(r, w)
+
+	// Send back success message 
 	w.Header().Set("Content-Type", "text/html")
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte(`
 		<div class="alert alert-success">
-			Account creation successul, leave a comment! ❤️
+			Account creation successful, leave a comment! ❤️
 		</div>
 		`))
 }
@@ -350,16 +420,27 @@ func RequestLogin(w http.ResponseWriter, r *http.Request, db *sql.DB, st *sessio
 }
 
 func RequestAuthentication(w http.ResponseWriter, r *http.Request, st *sessions.CookieStore) {
-	session, err := st.Get(r, "session"); if err != nil {
-		log.Printf("failed to create get session on auth request: %v", err)
-		return
+
+    session, err := st.Get(r, "session"); if err != nil {
+        log.Printf("failed to create get session on auth request: %v", err)
+        return
+    }
+
+    session.Values[sesAUTHENTICATED] = true
+
+    err = session.Save(r, w)
+    if err != nil {
+        log.Printf("failed to save session: %v", err)
+        return
+    }
+
+	// requested_path := r.URL.Path[len("/request-authenticate"):]
+	requested_path := r.URL.RequestURI()[len("/request-authenticate"):]
+	if requested_path == "" {
+		requested_path = "/"
 	}
 
-	session.Values[sesAUTHENTICATED] = true
-
-	session.Save(r, w)
-
-	w.Header().Set("HX-Refresh", "true")
+    w.Header().Set("HX-Redirect", requested_path)
 }
 
 func RequestLogout(w http.ResponseWriter, r *http.Request, db *sql.DB, st *sessions.CookieStore) {
@@ -394,29 +475,41 @@ func GetSessionString(r *http.Request, st *sessions.CookieStore) string {
 }
 
 func IsAuthed(r *http.Request, st *sessions.CookieStore) bool {
+    session, err := st.Get(r, "session")
+    if err != nil {
+        log.Printf("error getting session with IsAuthed: %v", err)
+        return false
+    }
 
-	session, err := st.Get(r, "session"); if err != nil {
-		log.Printf("error getting session with IsAuthed: %v", err)
-		return false
-	}
-
-	if auth, ok := session.Values[sesAUTHENTICATED].(bool); !ok || !auth {
-		return false
-	}
-	return true
+    auth, ok := session.Values[sesAUTHENTICATED]
+    if !ok || auth == nil {
+        return false
+    }
+    authBool, ok := auth.(bool)
+    if !ok || !authBool {
+        return false
+    }
+    return true
 }
 
 func GetCurrentUsername(r *http.Request, st *sessions.CookieStore) (string, error) {
-	session, err := st.Get(r, "session"); if err != nil {
-		log.Printf("error getting session in GetCurrentUsername: %v", err)
-		return "", err
-	}
+    session, err := st.Get(r, "session")
+    if err != nil {
+        log.Printf("error getting session in GetCurrentUsername: %v", err)
+        return "", err
+    }
 
-	username, ok := session.Values[sesUSERNAME].(string); if !ok {
-		return "", fmt.Errorf("username not found in session")
-	}
+    username, ok := session.Values[sesUSERNAME]
+    if !ok || username == nil {
+        return "", fmt.Errorf("username not found in session")
+    }
+    
+    usernameStr, ok := username.(string)
+    if !ok {
+        return "", fmt.Errorf("username in session is not a string")
+    }
 
-	return username, nil
+    return usernameStr, nil
 }
 
 func PrintUser(db *sql.DB, username string) {

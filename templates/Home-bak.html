@@ -1,0 +1,153 @@
+{{define "content"}}
+
+    {{$hasSelected := false}}
+    {{range .Data.Tags}}{{if .Selected}}{{$hasSelected = true}}{{end}}{{end}}
+
+    {{if $hasSelected}}
+        
+        <div id="tags-container">
+            <h4>Selected Tags: </h4>
+            {{ range .Data.Tags }}
+                {{ if .Selected }}
+                <h4>
+                <a href="#" 
+                    class="tag {{if .Selected}}selected{{end}}"
+                    onclick="modifyPathList('{{.Name}}', !this.classList.contains('selected')); return false;"
+                    hx-target="#content">
+                    {{.Name}}
+                </a>
+                </h4>
+                {{ end }}
+            {{ end }}
+        </div>
+    {{ end }}
+
+    <ul>
+
+        {{ if not .Data.Pages }}
+            <p>No pages found. Try removing tags.</p>
+        {{ end }}
+
+        {{ range .Data.Pages }}
+            <div class="page-entry" style="display: flex; align-items: start; margin-bottom: 20px;">
+                <div class="thumbnail">
+                    <a href="/page/{{.Title}}">
+                        <img src="data:image/png;base64,{{.Thumbnail}}" alt="Thumbnail">
+                    </a>
+                </div>
+                <div class="page-details">
+                    <h2><a href="/page/{{.Title}}">{{.Title}}</a></h2>
+                    <div class="timestamp">Posted by <a href="/uploader/{{ .Uploader }}">{{ .Uploader }}</a> at {{.PostTime.Format "2 Jan 2006"}}</div>
+                    <div class="tags" style="margin-top: 5px;">
+                        {{ range .Tags }}
+                            <a href="#" 
+                                class="tag {{if .Selected}}selected{{end}}"
+                                onclick="modifyPathList('{{.Name}}', !this.classList.contains('selected')); return false;"
+                                hx-target="#content"
+                                style="text-decoration: none;">
+                                {{.Name}}
+                            </a>
+                        {{ end }}
+                    </div>
+                </div>
+            </div>
+        {{ end }}
+    </ul>
+
+    <hr>
+
+    <h2>Tags</h2>
+
+    <div id="tags-container">    
+        {{ range .Data.Tags }}
+        <h4>
+          <a href="#" 
+             class="tag {{if .Selected}}selected{{end}}"
+             onclick="modifyPathList('{{.Name}}', !this.classList.contains('selected')); return false;"
+             hx-target="#content">
+            {{.Name}}
+          </a>
+        </h4>
+        {{ end }}
+    </div>
+
+    {{ if .Uploader }}
+        <br>
+        <hr>
+        <b><a href="/upload">Upload a Page</a></b>
+    {{ end }}
+    {{ if .Admin }}
+        <hr>
+        <b><a href="/user-management">User Management</a></b>
+    {{ end }}
+
+    <script>
+        function modifyPathList(tag, add) {
+            let searchParams = new URLSearchParams(window.location.search);
+            let tags = searchParams.get('tags') ? decodeURIComponent(searchParams.get('tags')).split(',') : [];
+            
+            if (add && !tags.includes(tag)) {
+                tags.push(tag);
+            } else if (!add) {
+                tags = tags.filter(t => t !== tag);
+            }
+            
+            if (tags.length > 0) {
+                searchParams.set('tags', tags.join(','));
+            } else {
+                searchParams.delete('tags');
+            }
+
+            let newUrl = window.location.pathname + (searchParams.toString() ? '?' + searchParams.toString() : '');
+            newUrl = decodeURIComponent(newUrl);
+            
+            // Update URL in browser
+            window.history.pushState(null, '', newUrl);
+            
+            // Make HTMX request
+            htmx.ajax('GET', newUrl, {target: '#content'});
+        }
+    </script>
+
+    <style>
+
+        .thumbnail {
+            max-width: min(500px, 30vw);
+            height: auto;
+            margin-right: 20px;
+            margin-left: -10px;
+            display: block; /* Optional: removes bottom spacing */
+        }
+
+        .page-details {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            justify-content: start;
+            margin-top: -10px;  /* This compensates for the default h2 margin */
+        }
+        
+        .page-details h2 {
+            margin-top: 0;
+            margin-bottom: 5px;
+        }
+
+        #tags-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 5px; /* Space between tags */
+        }
+
+        #tags-container h4 {
+            margin: 0; /* Remove default margin from h4 elements */
+            display: inline-block;
+            padding: 5px 10px;
+        }
+
+        .selected {
+            font-style: italic;
+            font-weight: bold;
+            /* Add any other styles for selected tags */
+        }
+    </style>
+{{end}}

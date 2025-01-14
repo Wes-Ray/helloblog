@@ -81,7 +81,7 @@ Open firewall for 443 and 80
 `sudo ufw status`
 
 Setup SSL/HTTPS with Let's Encrypt
-- Make sure you have both domain and www.domain pointed at server IP
+- Make sure you have both domain and www.domain on the DNS provider pointed at server IP
 `sudo apt install certbot python3-certbot-nginx`
 `sudo certbot --nginx -d yourdomain.com -d www.yourdomain.com`
 

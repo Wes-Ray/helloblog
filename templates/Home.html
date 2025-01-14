@@ -1,0 +1,79 @@
+{{ define "content" }}
+
+    <!-- Set tag variable if an active variable is found -->   
+    {{ $tag_link := "" }}
+    {{ if .Data.SelectedTag }}
+        <div style="display: flex; justify-content: center; margin-bottom: -15px;">
+            <i>Active Filter</i>
+        </div>
+        
+        <div class="nav-container">   
+            <a class="tag-link tag-tooltip-container" href="/" data-tooltip="Remove Tag">{{ .Data.SelectedTag }}</a>
+        </div>
+        {{ $tag_link = printf "?tag=%s" .Data.SelectedTag }}
+    {{ end }}
+
+
+    <!-- Page List -->
+    <ul>
+
+        {{ if not .Data.Pages }}
+            <p>No pages found! 😢</p>
+        {{ end }}
+
+        {{ range .Data.Pages }}
+            <div class="page-entry" style="display: flex; align-items: start; margin-bottom: 20px;">
+
+                <div class="thumbnail">
+                    <a href="/page/{{.Title}}{{$tag_link}}">
+                        <img src="data:image/png;base64,{{.Thumbnail}}" alt="{{.Title}}">
+                    </a>
+                </div>
+
+                <div class="page-details">
+                    <h2><a href="/page/{{.Title}}{{$tag_link}}">{{.Title}}</a></h2>
+                    <div class="timestamp">Posted by <a href="/uploader/{{ .Uploader }}">{{ .Uploader }}</a> at {{.PostTime.Format "2 Jan 2006"}}</div>
+ 
+
+                    <div id="tags-container">    
+                        {{ range .Tags }}
+                        <h3 class="tag-item">
+                            <a href="/?tag={{.Name}}" class="tag-link">
+                                {{.Name}}
+                            </a>
+                        </h3>
+                        {{ end }}
+                    </div>
+                </div>
+
+            </div>
+        {{ end }}
+
+    </ul>
+
+    <!-- Tags -->
+
+    <h2>Tags</h2>
+
+    <div id="tags-container">    
+        {{ range .Data.Tags }}
+        <h3 class="tag-item">
+            <a href="/?tag={{.Name}}" class="tag-link">
+                {{.Name}}
+            </a>
+        </h3>
+        {{ end }}
+    </div>
+
+    <!-- Admin/Uploader Stuff -->
+    {{ if .Uploader }}
+        <br>
+        <hr>
+        <b><a href="/upload">Upload a Page</a></b>
+    {{ end }}
+    {{ if .Admin }}
+        <hr>
+        <b><a href="/user-management">User Management</a></b>
+    {{ end }}
+
+{{ end }}
