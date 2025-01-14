@@ -31,6 +31,7 @@ import (
 type BlogPage struct {
 	ID       int64
 	Title    string
+	DisplayTitle string
 	Content  string // TODO: might want to make this markdown compatible
 	PostTime time.Time
 	Image    string // TODO: consider changing this back to a blob/save in a subfolder to serve
@@ -142,7 +143,7 @@ func HomePage(w http.ResponseWriter, r *http.Request, db *sql.DB, st *sessions.C
 	var err error
 	if selectedTag == "" {
 		query := `
-			SELECT id, title, post_time, thumbnail, uploader FROM pages
+			SELECT id, title, display_title, post_time, thumbnail, uploader FROM pages
 			ORDER BY post_time DESC
 		`
 		rows, err = db.Query(query)
@@ -152,7 +153,7 @@ func HomePage(w http.ResponseWriter, r *http.Request, db *sql.DB, st *sessions.C
 		}
 	} else {
 		query := `
-			SELECT DISTINCT p.id, p.title, p.post_time, p.thumbnail, p.uploader
+			SELECT DISTINCT p.id, p.title, p.display_title, p.post_time, p.thumbnail, p.uploader
 			FROM pages p
 			JOIN page_tags pt ON p.id = pt.page_id
 			JOIN tags t ON pt.tag_id = t.id
@@ -173,7 +174,7 @@ func HomePage(w http.ResponseWriter, r *http.Request, db *sql.DB, st *sessions.C
 
 	for rows.Next() {
 		var p BlogPage
-		err := rows.Scan(&p.ID, &p.Title, &p.PostTime, &p.Thumbnail, &p.Uploader)
+		err := rows.Scan(&p.ID, &p.Title, &p.DisplayTitle, &p.PostTime, &p.Thumbnail, &p.Uploader)
 		if err != nil {
 			log.Printf("Failed to scan row: %v", err)
 			return
@@ -249,7 +250,7 @@ func UploadPage(w http.ResponseWriter, r *http.Request, st *sessions.CookieStore
 }
 
 // returns true if page already exists
-func addPageToDB(db *sql.DB, title string, content string, post_time time.Time, image64 string, thumbnail64 string, tags []string, uploader string, unlisted bool, link_post bool, url_link string) (error, bool) {
+func addPageToDB(db *sql.DB, title string, display_title string, content string, post_time time.Time, image64 string, thumbnail64 string, tags []string, uploader string, unlisted bool, link_post bool, url_link string) (error, bool) {
 	// Start a transaction since we'll be doing multiple operations
 	tx, err := db.Begin()
 	if err != nil {
@@ -268,8 +269,8 @@ func addPageToDB(db *sql.DB, title string, content string, post_time time.Time, 
 	}
 
 	// Insert the page and get its ID
-	result, err := tx.Exec("INSERT INTO pages (title, content, post_time, image, thumbnail, uploader, unlisted, link_post, url_link) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
-		title, content, post_time, image64, thumbnail64, uploader, unlisted, link_post, url_link)
+	result, err := tx.Exec("INSERT INTO pages (title, display_title, content, post_time, image, thumbnail, uploader, unlisted, link_post, url_link) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+		title, display_title, content, post_time, image64, thumbnail64, uploader, unlisted, link_post, url_link)
 	if err != nil {
 		return fmt.Errorf("failed to add to database: %w", err), false
 	}
@@ -313,6 +314,29 @@ func addPageToDB(db *sql.DB, title string, content string, post_time time.Time, 
 	return nil, false
 }
 
+func sanitizeTitle(title string) string {
+    var result strings.Builder
+    
+    lastWasHyphen := false
+    
+    for _, char := range title {
+        switch {
+        case (char >= 'a' && char <= 'z') || (char >= 'A' && char <= 'Z') || (char >= '0' && char <= '9'):
+            result.WriteRune(char)
+            lastWasHyphen = false
+        case char == ' ':
+            if !lastWasHyphen {
+                result.WriteRune('-')
+                lastWasHyphen = true
+            }
+        }
+    }
+    
+    sanitized := strings.TrimSuffix(result.String(), "-")
+    
+    return sanitized
+}
+
 func UploadHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, st *sessions.CookieStore) {
 	if !users.IsUploader(r, st) {
 		w.Write([]byte("Unauthorized access"))
@@ -325,11 +349,13 @@ func UploadHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, st *sessi
 		return
 	}
 
-	title := r.FormValue("title")
-	if title == "" {
+	display_title := r.FormValue("title")
+	if display_title == "" {
 		w.Write([]byte("Title is required"))
 		return
 	}
+
+	title := sanitizeTitle(display_title)
 
 	tags_string := r.FormValue("tags")
 	// parse tags string into tags list
@@ -392,7 +418,7 @@ func UploadHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, st *sessi
 
 	small64 := base64.StdEncoding.EncodeToString(buf.Bytes())
 
-	err, exists := addPageToDB(db, title, content, post_time, file64, small64, tags, uploader_name, unlisted, link_post, url_link)
+	err, exists := addPageToDB(db, title, display_title, content, post_time, file64, small64, tags, uploader_name, unlisted, link_post, url_link)
 	if err != nil {
 		if exists {
 			w.Write([]byte("Title already in use"))
@@ -440,8 +466,8 @@ func EditPageHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, st *ses
         return
     }
 
-	title := r.FormValue("title")
-    if title == "" {
+	display_title := r.FormValue("display_title")
+    if display_title == "" {
         w.Write([]byte("Title cannot be empty"))
         return
     }
@@ -503,6 +529,7 @@ func EditPageHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, st *ses
             post_time = ?,
             unlisted = ?,
 			title = ?,
+			display_title = ?,
 			link_post = ?,
 			url_link = ?
         WHERE id = ?
@@ -511,7 +538,8 @@ func EditPageHandler(w http.ResponseWriter, r *http.Request, db *sql.DB, st *ses
         r.FormValue("description"),
         post_time,
         r.FormValue("unlisted") == "on",
-		r.FormValue("title"),
+		sanitizeTitle(display_title),
+		display_title,
 		link_post,
 		url_link,
         pageID,
@@ -812,13 +840,13 @@ func incrementPageViews(db *sql.DB, pageID int64) error {
 }
 
 func getPageFromDB(title string, db *sql.DB) (*BlogPage, error) {
-	query := "SELECT id, title, content, post_time, image, uploader, views, link_post, url_link FROM pages WHERE title = ?"
+	query := "SELECT id, title, display_title, content, post_time, image, uploader, views, link_post, url_link FROM pages WHERE title = ?"
 
 	row := db.QueryRow(query, title)
 	var p BlogPage
 
 	// TODO: update so it gives a different err for it being missing from database vs some other issue
-	err := row.Scan(&p.ID, &p.Title, &p.Content, &p.PostTime, &p.Image, &p.Uploader, &p.Views, &p.LinkPost, &p.UrlLink)
+	err := row.Scan(&p.ID, &p.Title, &p.DisplayTitle, &p.Content, &p.PostTime, &p.Image, &p.Uploader, &p.Views, &p.LinkPost, &p.UrlLink)
 	if err != nil {
 		return nil, err
 	}
@@ -1100,6 +1128,7 @@ func PageRequest(w http.ResponseWriter, r *http.Request, db *sql.DB, st *session
 
 	content := map[string]interface{}{
 		"Title":    	p.Title,
+		"DisplayTitle": p.DisplayTitle,
 		"Username": 	username,
 		"Admin":    	admin,
 		"Uploader": 	uploader,

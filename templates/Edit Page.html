@@ -1,12 +1,12 @@
 {{define "content"}}
 
-<h1>Editing Page: <i>"{{ .Data.Page.Title }}"</i></h1>
+<h1>Editing Page: <i>"{{ .Data.Page.DisplayTitle }}"</i></h1>
 
 <div id="upload-container">
     <form id="upload_form">
         <i><b>Title</Title></b></i>
         <input type="hidden" name="original_title" value="{{ .Data.Page.Title }}">
-        <textarea type="text" name="title" rows="1" cols="80">{{ .Data.Page.Title }}</textarea>
+        <textarea type="text" name="display_title" rows="1" cols="80">{{ .Data.Page.DisplayTitle }}</textarea>
         <i><b>Image</Title></b></i>
         <input type="file" name="image" accept="image/*">
         <i><b>Description</Title></b></i>

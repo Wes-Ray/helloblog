@@ -1,6 +1,11 @@
 
 
 /* Base html */
+
+body {
+    padding: 24px;
+}
+
 nav {
     display: flex;
     justify-content: space-between;

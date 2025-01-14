@@ -26,13 +26,13 @@
 
                 <div class="thumbnail">
                     <a href="/page/{{.Title}}{{$tag_link}}">
-                        <img src="data:image/png;base64,{{.Thumbnail}}" alt="{{.Title}}">
+                        <img src="data:image/png;base64,{{.Thumbnail}}" alt="{{.DisplayTitle}}">
                     </a>
                 </div>
 
                 <div class="page-details">
-                    <h2><a href="/page/{{.Title}}{{$tag_link}}">{{.Title}}</a></h2>
-                    <div class="timestamp">Posted by <a href="/uploader/{{ .Uploader }}">{{ .Uploader }}</a> at {{.PostTime.Format "2 Jan 2006"}}</div>
+                    <h2><a href="/page/{{.Title}}{{$tag_link}}">{{.DisplayTitle}}</a></h2>
+                    <div class="timestamp">Posted by <a href="/uploader/{{ .Uploader }}">{{ .Uploader }}</a> on {{.PostTime.Format "2 Jan 2006"}}</div>
  
 
                     <div id="tags-container">    

@@ -49,7 +49,7 @@ import (
 const (
 	DatabasePath 	= "database_blog.db"
 	ImagePath    	= "images"
-	DatabaseVersion	= "1.3"
+	DatabaseVersion	= "1.4"
 )
 
 func initDatabaseIfNone() bool {
@@ -81,6 +81,7 @@ func initDatabaseIfNone() bool {
 		CREATE TABLE IF NOT EXISTS pages (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         title TEXT NOT NULL,
+		display_title TEXT NOT NULL,
         content TEXT NOT NULL,
 		post_time TIMESTAMP,
         image TEXT NOT NULL,
