@@ -10,7 +10,7 @@
     {{ end }}
 
     <!-- Nav Buttons -->
-    <div class="nav-container">
+    <!-- <div class="nav-container">
         {{ if .PrevPage }}
             <a class="arrow-left tooltip-container" href="/page/{{ .PrevPage }}{{if .FollowTag}}?tag={{ .FollowTag }}{{ end }}" data-tooltip="Previous: {{ .PrevPage }}">
                 <img src="/images/arrow2-left.png" alt="previous page">
@@ -33,7 +33,7 @@
             <span></span>
         {{ end }}
 
-    </div>
+    </div> -->
 
     <p>Posted {{ .Data.PostTime.Format "2 Jan 2006" }} by <a href="/uploader/{{ .Data.Uploader }}">{{ .Data.Uploader }}</a></p>
 
